@@ -1,0 +1,82 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.35.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           ssi
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/Lando-L/ssi#readme>
+homepage:       https://github.com/Lando-L/ssi#readme
+bug-reports:    https://github.com/Lando-L/ssi/issues
+author:         Lando Löper
+maintainer:     lando.loeper@gmx.net
+copyright:      2022 Lando Löper
+license:        Apache-2.0
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/Lando-L/ssi
+
+library
+  exposed-modules:
+      SSI.Credential.VerifiableCredential
+      SSI.Identity.Did
+      SSI.Identity.Method.Ebsi
+      SSI.Identity.Resolver
+      SSI.Types.Codec
+      SSI.Types.Error
+  other-modules:
+      Paths_ssi
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      aeson
+    , attoparsec
+    , base >=4.9 && <5
+    , base58-bytestring
+    , base64-bytestring
+    , bytestring
+    , containers
+    , jose ==0.10.*
+    , lens
+    , monad-time
+    , mtl
+    , text
+    , time
+  default-language: Haskell2010
+
+test-suite ssi-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      SSI.Credential.VerifiableCredentialSpec
+      SSI.Identity.DidSpec
+      SSI.Identity.ResolverSpec
+      Paths_ssi
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , attoparsec
+    , base >=4.9 && <5
+    , base58-bytestring
+    , base64-bytestring
+    , bytestring
+    , containers
+    , hspec
+    , jose ==0.10.*
+    , lens
+    , monad-time
+    , mtl
+    , ssi
+    , text
+    , time
+  default-language: Haskell2010
