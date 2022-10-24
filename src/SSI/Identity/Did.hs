@@ -21,39 +21,12 @@ A DID is a simple text string consisting of three parts:
 2. the identifier for the DID method
 3. the DID method-specific identifier
 
-DIDs can be created manually using its constructor or parsed from a Text or JSON representation.
-
-@
-import SSI.Identity.Did
-
-manual :: Did
-manual = Did "example" "123456789abcdefghi"
-
-parsed :: Maybe Did
-parsed = preview text "did:example:123456789abcdefghi"
-@
-
-DID URLs are created in similar fashion, either using its smart constructor
-or they are parsed from Text or JSON representations.
-
-@
-import SSI.Identity.Did
-
-manual :: DidUrl
-manual = newDidUrl (Did "example" "123456789abcdefghi")
-  & didUrlPath ?~ "path"
-  & didUrlFragment ?~ "keys-1"
-
-parsed :: Maybe DidUrl
-parsed = preview text "123456789abcdefghi/path#keys-1"
-@
-
-DIDs resolve to corresponding DID documents. A DID document contains information associated with the DID,
-such as ways to cryptographically authenticate a DID controller.
-
 -}
 module SSI.Identity.Did
   (
+  -- * Identifier creation
+  -- $didCreation
+
   -- * Decentralized Identifiers
     Did(..)
   , HasDid(..)
@@ -138,6 +111,45 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Maybe as Maybe
 import qualified Data.Text as T
 
+-- $didCreation
+-- 
+-- DIDs can be created manually using its constructor or parsed from a Text or JSON representation.
+-- 
+-- @
+-- {-# LANGUAGE OverloadedStrings #-}
+-- 
+-- import Control.Lens
+-- 
+-- import SSI.Identity.Did
+-- import SSI.Types.Codec
+-- 
+-- manual :: Did
+-- manual = Did "example" "123456789abcdefghi"
+-- 
+-- parsed :: Maybe Did
+-- parsed = preview text "did:example:123456789abcdefghi"
+-- @
+-- 
+-- DID URLs are created in similar fashion, either using its smart constructor
+-- or they are parsed from Text or JSON representations.
+-- 
+-- @
+-- {-# LANGUAGE OverloadedStrings #-}
+-- 
+-- import Control.Lens
+-- 
+-- import SSI.Identity.Did
+-- import SSI.Types.Codec
+-- 
+-- manual :: DidUrl
+-- manual = newDidUrl (Did "example" "123456789abcdefghi")
+--   & didUrlPath ?~ "path"
+--   & didUrlFragment ?~ "keys-1"
+-- 
+-- parsed :: Maybe DidUrl
+-- parsed = preview text "123456789abcdefghi/path#keys-1"
+-- @
+-- 
 {-|
 
 Decentralized Identifiers are uniquely described by a method-name and a method-specific-id.

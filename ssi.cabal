@@ -6,7 +6,9 @@ cabal-version: 1.12
 
 name:           ssi
 version:        0.1.0.0
+synopsis:       Decentralized Identifiers and Verifiable Credentials library
 description:    Please see the README on GitHub at <https://github.com/Lando-L/ssi#readme>
+category:       Cryptography
 homepage:       https://github.com/Lando-L/ssi#readme
 bug-reports:    https://github.com/Lando-L/ssi/issues
 author:         Lando Löper
@@ -25,12 +27,15 @@ source-repository head
 
 library
   exposed-modules:
+      SSI.Credential.Proof.Jwt
+      SSI.Credential.Proof.SigningKeyStore
+      SSI.Credential.Proof.VerificationKeyStore
       SSI.Credential.VerifiableCredential
+      SSI.Error
       SSI.Identity.Did
       SSI.Identity.Method.Ebsi
       SSI.Identity.Resolver
       SSI.Types.Codec
-      SSI.Types.Error
   other-modules:
       Paths_ssi
   hs-source-dirs:

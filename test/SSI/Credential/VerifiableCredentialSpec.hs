@@ -1,4 +1,3 @@
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE QuasiQuotes        #-}
 {-# LANGUAGE TypeApplications   #-}
@@ -8,26 +7,26 @@ module SSI.Credential.VerifiableCredentialSpec
   ) where
 
 import Control.Lens (review, reviews, (?~))
-import Control.Monad.Except (MonadError(..))
+import Control.Monad.Except (MonadError (..))
 import Control.Monad.Time (MonadTime(..))
-import Crypto.JOSE.Error (Error(..))
-import Crypto.JOSE.JWK (Crv(..), JWK, KeyMaterialGenParam(..))
-import Crypto.JWT (JWTError(..))
-import Data.Aeson (Value(..))
+import Crypto.JOSE.JWK (Crv(..), KeyMaterialGenParam(..))
+import Crypto.JWT (JWK, JWTError(..))
+import Data.Aeson (Value)
 import Data.Aeson.QQ.Simple (aesonQQ)
 import Data.Function ((&))
-import Data.Time.Clock (UTCTime(..))
+import Data.Text (Text)
+import Data.Time (UTCTime)
 import Test.Hspec (Spec, context, describe, it, shouldReturn)
 
-import SSI.Credential.VerifiableCredential (issue, present, verifyCredential, verifyPresentation)
-import SSI.Identity.Did (Did(..), DidUrl(..), VerificationMethod (..), VerificationMethodKey(..), newDidUrl, didUrlFragment)
-import SSI.Identity.Resolver (AsResolutionError(..), ResolutionError(..), Resolver)
+import SSI.Error (SsiError(..), runSsi)
+import SSI.Identity.Did (Did (..), DidUrl, VerificationMethod (..), VerificationMethodKey (..), newDidUrl, didUrlFragment)
+import SSI.Identity.Resolver (Resolver, ResolutionError(..), AsResolutionError(..))
+import SSI.Credential.VerifiableCredential (VerifiableCredential(..), VerifiablePresentation(..))
+import SSI.Credential.Proof.Jwt (signCredential, verifyCredential, signPresentation, verifyPresentation)
+import SSI.Credential.Proof.VerificationKeyStore (VerificationError(..))
 import SSI.Types.Codec (text)
-import SSI.Types.Error (SsiError(..))
 
 import qualified Crypto.JOSE.JWK as Jwk
-import qualified Crypto.JWT as Jwt
-import qualified Data.Time.Clock as Time
 
 spec :: Spec
 spec = do
@@ -43,12 +42,12 @@ vcSpec = describe "VerifiableCredentials" $
         now <- currentTime
         shouldReturn
           (
-            Jwt.runJOSE (
-              issue @SsiError jwk (ref issuer) "1" subject degree now now (Just (future now))
-                >>= verifyCredential @SsiError emptyResolver subject
+            runSsi (
+              signCredential jwk (ref issuer) (credential "1" now degree)
+                >>= verifyCredential emptyResolver subject
             )
           )
-          (Left (IdentityError (DidNotFound (review text (ref issuer)))))
+          (Left (IdentityResolutionError (DidNotFound (review text (ref issuer)))))
 
     context "when given a wrong audience" $
       it "fails the validation process" $ do
@@ -56,12 +55,12 @@ vcSpec = describe "VerifiableCredentials" $
         now <- currentTime
         shouldReturn
           (
-            Jwt.runJOSE (
-              issue @SsiError jwk (ref issuer) "1" subject degree now now (Just (future now))
-                >>= verifyCredential @SsiError (staticResolver issuer jwk) issuer
+            runSsi (
+              signCredential jwk (ref issuer) (credential "1" now degree)
+                >>= verifyCredential (staticResolver issuer jwk) issuer
             )
           )
-          (Left (CredentialError JWTNotInAudience))
+          (Left (JWTError JWTNotInAudience))
 
     context "when given valid parameters" $
       it "returns the validated credentials" $ do
@@ -69,8 +68,8 @@ vcSpec = describe "VerifiableCredentials" $
         now <- currentTime
         shouldReturn
           (
-            Jwt.runJOSE (
-              issue @SsiError jwk (ref issuer) "1" subject degree now now (Just (future now))
+            runSsi (
+              signCredential @SsiError jwk (ref issuer) (credential "1" now degree)
                 >>= verifyCredential @SsiError (staticResolver issuer jwk) subject
             )
           )
@@ -86,16 +85,16 @@ vpSpec = describe "VerifiablePresentation" $
         now <- currentTime
         shouldReturn
           (
-            Jwt.runJOSE (
+            runSsi (
               sequence
-                [ issue @SsiError issuerKey (ref issuer) "1" subject degree now now (Just (future now))
-                , issue @SsiError issuerKey (ref issuer) "2" subject food now now (Just (future now))
+                [ signCredential issuerKey (ref issuer) (credential "1" now degree)
+                , signCredential issuerKey (ref issuer) (credential "2" now food)
                 ]
-                >>= present @SsiError subjectKey subject "1" verifier now now (Just (future now)) "secret"
-                >>= verifyPresentation @SsiError "wrong" (staticResolver issuer issuerKey) verifier
+                >>= signPresentation subjectKey subject verifier "nonce" . presentation now
+                >>= verifyPresentation "wrong" (staticResolver issuer issuerKey) verifier
             )
           )
-          (Left (CredentialError (JWSError NoUsableKeys)))
+          (Left (CredentialVerificationError VerificationJWKNotFound))
 
     context "when given an unresolvable reference" $
       it "fails the validation process" $ do
@@ -104,16 +103,16 @@ vpSpec = describe "VerifiablePresentation" $
         now <- currentTime
         shouldReturn
           (
-            Jwt.runJOSE (
+            runSsi (
               sequence
-                [ issue @SsiError issuerKey (ref issuer) "1" subject degree now now (Just (future now))
-                , issue @SsiError issuerKey (ref issuer) "2" subject food now now (Just (future now))
+                [ signCredential issuerKey (ref issuer) (credential "1" now degree)
+                , signCredential issuerKey (ref issuer) (credential "2" now food)
                 ]
-                >>= present @SsiError subjectKey subject "1" verifier now now (Just (future now)) "secret"
-                >>= verifyPresentation @SsiError "secret" emptyResolver verifier
+                >>= signPresentation subjectKey subject verifier "nonce" . presentation now
+                >>= verifyPresentation "nonce" emptyResolver verifier
             )
           )
-          (Left (IdentityError (DidNotFound (review text (ref issuer)))))
+          (Left (IdentityResolutionError (DidNotFound (review text (ref issuer)))))
     
     context "when given a wrong audience" $
       it "fails the validation process" $ do
@@ -122,16 +121,16 @@ vpSpec = describe "VerifiablePresentation" $
         now <- currentTime
         shouldReturn
           (
-            Jwt.runJOSE (
+            runSsi (
               sequence
-                [ issue @SsiError issuerKey (ref issuer) "1" subject degree now now (Just (future now))
-                , issue @SsiError issuerKey (ref issuer) "2" subject food now now (Just (future now))
+                [ signCredential issuerKey (ref issuer) (credential "1" now degree)
+                , signCredential issuerKey (ref issuer) (credential "2" now food)
                 ]
-                >>= present @SsiError subjectKey subject "1" verifier now now (Just (future now)) "secret"
-                >>= verifyPresentation @SsiError "secret" (staticResolver issuer issuerKey) issuer
+                >>= signPresentation subjectKey subject subject "nonce" . presentation now
+                >>= verifyPresentation "nonce" (staticResolver issuer issuerKey) verifier
             )
           )
-          (Left (CredentialError JWTNotInAudience))
+          (Left (JWTError JWTNotInAudience))
     
     context "when given valid parameters" $
       it "returns the validated credentials" $ do
@@ -140,13 +139,13 @@ vpSpec = describe "VerifiablePresentation" $
         now <- currentTime
         shouldReturn
           (
-            Jwt.runJOSE (
+            runSsi (
               sequence
-                [ issue @SsiError issuerKey (ref issuer) "1" subject degree now now (Just (future now))
-                , issue @SsiError issuerKey (ref issuer) "2" subject food now now (Just (future now))
+                [ signCredential @SsiError issuerKey (ref issuer) (credential "1" now degree)
+                , signCredential @SsiError issuerKey (ref issuer) (credential "2" now food)
                 ]
-                >>= present @SsiError subjectKey subject "1" verifier now now (Just (future now)) "secret"
-                >>= verifyPresentation @SsiError "secret" (staticResolver issuer issuerKey) verifier
+                >>= signPresentation @SsiError subjectKey subject verifier "nonce" . presentation now
+                >>= verifyPresentation @SsiError "nonce" (staticResolver issuer issuerKey) verifier
             )
           )
           (Right [degree, food])
@@ -166,14 +165,17 @@ degree = [aesonQQ|{"type":"BachelorDegree", "name":"Bachelor of Science"}|]
 food :: Value
 food = [aesonQQ|{"type": "FavoriteFood", "name": "Papaya"}|]
 
-staticResolver :: Applicative m => Did -> JWK -> Resolver m DidUrl VerificationMethod
+credential :: Text -> UTCTime -> Value -> VerifiableCredential
+credential _id now = VerifiableCredential _id issuer now now Nothing subject
+
+presentation :: UTCTime -> [Text] -> VerifiablePresentation
+presentation now = VerifiablePresentation "1" subject now now Nothing
+
+staticResolver :: Applicative m => Did -> JWK -> Resolver DidUrl m VerificationMethod
 staticResolver did jwk = const $ pure $ VerificationMethod (ref did) "JsonWebKey2020" did (PublicKeyJwk jwk)
 
-emptyResolver :: (MonadError e m, AsResolutionError e) => Resolver m DidUrl VerificationMethod
+emptyResolver :: (MonadError e m, AsResolutionError e) => Resolver DidUrl m VerificationMethod
 emptyResolver = reviews (_DidNotFound . text) throwError
 
 ref :: Did -> DidUrl
 ref did = newDidUrl did & didUrlFragment ?~ "keys-1"
-
-future :: UTCTime -> UTCTime
-future = Time.addUTCTime (Time.secondsToNominalDiffTime 1000)

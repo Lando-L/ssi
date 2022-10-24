@@ -14,7 +14,7 @@ import Data.Function ((&))
 import Data.Text (Text)
 import Test.Hspec (Spec, context, describe, it, shouldBe)
 
-import SSI.Identity.Did (Did(..), DidUrl(..), DidDocument, VerificationMethod(..), VerificationMethodKey(..), VerificationMethodReference(..), newDidUrl, didUrlFragment, newDidDocument, docController, docVerificationMethod, docAuthentication, docService, newDidUrl, Service (Service))
+import SSI.Identity.Did (Did(..), DidUrl(..), DidDocument, VerificationMethod(..), VerificationMethodKey(..), VerificationMethodReference(..), Service (..), newDidUrl, didUrlFragment, newDidDocument, docController, docVerificationMethod, docAuthentication, docService, newDidUrl)
 import SSI.Types.Codec (Multibase(..), multibase, text)
 
 import qualified Data.Aeson as Json
